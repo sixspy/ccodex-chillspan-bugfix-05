@@ -6,6 +6,7 @@ import json
 from fastapi import APIRouter, HTTPException
 
 from auth import AuthHeader, require_user, require_writer
+from batch_state import state_from_status
 from db import connect, now_iso, write_audit
 from locks import release, require_lock
 from models import SealIn
@@ -19,10 +20,15 @@ def list_seals(authorization: AuthHeader = None):
     require_user(authorization)
     with connect() as conn:
         rows = conn.execute(
-            """SELECT s.*, b.batch_code FROM seal_snapshots s
+            """SELECT s.*, b.batch_code, b.status batch_status FROM seal_snapshots s
                JOIN temp_batches b ON b.id=s.batch_id ORDER BY s.id DESC"""
         ).fetchall()
-        return {"items": [dict(r) for r in rows]}
+        items = []
+        for r in rows:
+            d = dict(r)
+            d.update(state_from_status(d.pop("batch_status")))
+            items.append(d)
+        return {"items": items}
 
 
 @router.post("/api/seals")
@@ -84,6 +90,7 @@ def seal_batch(body: SealIn, authorization: AuthHeader = None):
                 "batch_code": batch["batch_code"],
                 "generation": gen + 1,
                 "status": "已封批",
+                **state_from_status("已封批"),
             }
         finally:
             release(conn, lock_key, user)

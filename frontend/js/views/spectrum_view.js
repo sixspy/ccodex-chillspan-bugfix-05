@@ -9,13 +9,15 @@ export const spectrumViewTemplate = `
   </div>
   <div class="actions"><button @click="doSpectrum">导出温谱</button></div>
   <table class="data-table">
-    <thead><tr><th>导出号</th><th>批次</th><th>点数</th><th>校验</th><th>状态</th></tr></thead>
+    <thead><tr><th>导出号</th><th>批次</th><th>点数</th><th>校验</th><th>封批态</th><th>在批计</th><th>状态</th></tr></thead>
     <tbody>
       <tr v-for="x in spectrumExports" :key="x.id">
         <td>{{ x.export_ref }}</td>
         <td>{{ x.batch_code }}</td>
         <td>{{ x.point_count }}</td>
         <td class="mono">{{ x.checksum }}</td>
+        <td><span class="badge" :class="x.seal_state==='已封批' ? 'pass' : 'frozen'">{{ x.seal_state }}</span></td>
+        <td>{{ x.active_counted ? "是" : "否" }}</td>
         <td>{{ x.status }}</td>
       </tr>
     </tbody>

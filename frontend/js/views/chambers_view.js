@@ -39,7 +39,7 @@ export const chambersViewTemplate = `
   </div>
   <div v-if="chamberDetail" class="detail-box">
     <h3>仓间详情 · {{ chamberDetail.chamber.name }}</h3>
-    <p>在批 {{ chamberDetail.active_batch_count }} · 剩余配额 {{ chamberDetail.quota_left }}</p>
+    <p>在批 {{ chamberDetail.active_batch_count }} · 已封批 {{ chamberDetail.sealed_batch_count ?? 0 }} · 剩余配额 {{ chamberDetail.quota_left }}</p>
     <table class="data-table compact">
       <thead><tr><th>探头</th><th>在线</th><th>校准到期</th></tr></thead>
       <tbody>

@@ -400,6 +400,35 @@ createApp({
         flashErr(e);
       }
     }
+    async function pullProof() {
+      clearFlash();
+      try {
+        const row = await api.pullProof(proofCode.value, { note: "监控台拉取" });
+        flashOk(
+          row.state === "影子草案"
+            ? `影子草案 #${row.draft_id} 已落，正式互证零改`
+            : `互证${row.branch}路径：在批正式计数零改，拒累加`
+        );
+        proofOne.value = await api.proofBatch(proofCode.value);
+      } catch (e) {
+        flashErr(e);
+      }
+    }
+    const proofDrafts = computed(() =>
+      (proofOne.value && proofOne.value.records ? proofOne.value.records : []).filter(
+        (r) => r.state === "影子草案"
+      )
+    );
+    async function promoteDraft(id) {
+      clearFlash();
+      try {
+        const row = await api.promoteDraft(id, { review: "通过" });
+        flashOk(`草案 #${row.draft_id} 已原子晋升为正式互证`);
+        proofOne.value = await api.proofBatch(proofCode.value);
+      } catch (e) {
+        flashErr(e);
+      }
+    }
 
     async function addCalibration() {
       clearFlash();
@@ -519,6 +548,9 @@ createApp({
       loadRecon,
       loadProof,
       loadReconAll,
+      pullProof,
+      proofDrafts,
+      promoteDraft,
       addCalibration,
       createRoute,
       doCarrierStub,
@@ -547,7 +579,7 @@ createApp({
       <div class="gauges">
         <div class="gauge"><span class="k">仓间</span><span class="v">{{ dash.chambers || 0 }}</span></div>
         <div class="gauge"><span class="k">探头</span><span class="v">{{ dash.probes || 0 }}</span></div>
-        <div class="gauge"><span class="k">在批</span><span class="v">{{ dash.batches || 0 }}</span></div>
+        <div class="gauge"><span class="k">在批</span><span class="v">{{ dash.active_batches ?? dash.batches ?? 0 }}</span></div>
         <div class="gauge warn"><span class="k">开放游标</span><span class="v">{{ dash.open_excursions || 0 }}</span></div>
         <div class="gauge"><span class="k">已封批</span><span class="v">{{ dash.sealed_batches || 0 }}</span></div>
       </div>

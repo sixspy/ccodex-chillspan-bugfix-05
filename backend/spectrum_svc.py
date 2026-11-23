@@ -7,6 +7,7 @@ import json
 from fastapi import APIRouter, HTTPException
 
 from auth import AuthHeader, require_user, require_writer
+from batch_state import state_from_status
 from db import connect, now_iso, write_audit
 from models import SpectrumIn
 
@@ -18,10 +19,16 @@ def list_exports(authorization: AuthHeader = None):
     require_user(authorization)
     with connect() as conn:
         rows = conn.execute(
-            """SELECT s.*, b.batch_code FROM spectrum_exports s
+            """SELECT s.*, b.batch_code, b.status batch_status, b.generation
+               FROM spectrum_exports s
                JOIN temp_batches b ON b.id=s.batch_id ORDER BY s.id DESC"""
         ).fetchall()
-        return {"items": [dict(r) for r in rows]}
+        items = []
+        for r in rows:
+            d = dict(r)
+            d.update(state_from_status(d.pop("batch_status")))
+            items.append(d)
+        return {"items": items}
 
 
 @router.post("/api/spectrum/export")
@@ -80,12 +87,15 @@ def get_export(export_ref: str, authorization: AuthHeader = None):
     require_user(authorization)
     with connect() as conn:
         row = conn.execute(
-            """SELECT s.*, b.temp_points, b.batch_code FROM spectrum_exports s
+            """SELECT s.*, b.temp_points, b.batch_code, b.status batch_status,
+                      b.generation
+               FROM spectrum_exports s
                JOIN temp_batches b ON b.id=s.batch_id WHERE s.export_ref=?""",
             (export_ref,),
         ).fetchone()
         if not row:
             raise HTTPException(404, "导出不存在")
         data = dict(row)
+        data.update(state_from_status(data.pop("batch_status")))
         data["temp_points"] = json.loads(data["temp_points"] or "[]")
         return data

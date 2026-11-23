@@ -60,6 +60,16 @@ export function createApi(getToken, onUnauthorized) {
     reconcile: () => req("/api/reconcile"),
     reconcileOne: (code) => req(`/api/reconcile/${encodeURIComponent(code)}`),
     proofBatch: (code) => req(`/api/proof/batch/${encodeURIComponent(code)}`),
+    pullProof: (code, data) =>
+      req(`/api/proof/batch/${encodeURIComponent(code)}`, {
+        method: "POST",
+        body: JSON.stringify(data || {}),
+      }),
+    promoteDraft: (id, data) =>
+      req(`/api/proof/draft/${id}/promote`, {
+        method: "POST",
+        body: JSON.stringify(data || {}),
+      }),
     calibrations: (probeId) =>
       req(probeId ? `/api/calibrations?probe_id=${probeId}` : "/api/calibrations"),
     addCalibration: (data) =>

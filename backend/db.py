@@ -193,6 +193,35 @@ CREATE TABLE IF NOT EXISTS thaw_event_jobs(
   detail TEXT,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS proof_records(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  batch_id INTEGER NOT NULL,
+  mode TEXT NOT NULL,
+  state TEXT NOT NULL,
+  note TEXT,
+  created_at TEXT NOT NULL,
+  promoted_at TEXT,
+  reviewed_at TEXT,
+  FOREIGN KEY(batch_id) REFERENCES temp_batches(id)
+);
+CREATE TABLE IF NOT EXISTS proof_seal_minutes(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  batch_id INTEGER NOT NULL,
+  sealed_date TEXT NOT NULL,
+  branch TEXT NOT NULL,
+  statement TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  UNIQUE(batch_id, sealed_date),
+  FOREIGN KEY(batch_id) REFERENCES temp_batches(id)
+);
+CREATE TABLE IF NOT EXISTS proof_deviations(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  batch_id INTEGER NOT NULL,
+  actor TEXT NOT NULL,
+  detail TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY(batch_id) REFERENCES temp_batches(id)
+);
 """
 
 
@@ -413,14 +442,17 @@ def init_db() -> None:
 
 
 def dashboard_stats(conn: sqlite3.Connection) -> dict:
+    from batch_state import active_total, SEALED
+
     chambers = conn.execute("SELECT COUNT(*) c FROM cold_chambers").fetchone()["c"]
     probes = conn.execute("SELECT COUNT(*) c FROM probes").fetchone()["c"]
     batches = conn.execute("SELECT COUNT(*) c FROM temp_batches").fetchone()["c"]
+    active = active_total(conn)
     open_exc = conn.execute(
         "SELECT COUNT(*) c FROM excursion_cursors WHERE status='开放'"
     ).fetchone()["c"]
     sealed = conn.execute(
-        "SELECT COUNT(*) c FROM temp_batches WHERE status='已封批'"
+        "SELECT COUNT(*) c FROM temp_batches WHERE status=?", (SEALED,)
     ).fetchone()["c"]
     exports = conn.execute(
         "SELECT COUNT(*) c FROM spectrum_exports WHERE status='已导出'"
@@ -441,6 +473,7 @@ def dashboard_stats(conn: sqlite3.Connection) -> dict:
         "chambers": chambers,
         "probes": probes,
         "batches": batches,
+        "active_batches": active,
         "open_excursions": open_exc,
         "sealed_batches": sealed,
         "spectrum_exports": exports,

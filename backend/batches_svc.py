@@ -6,6 +6,7 @@ import json
 from fastapi import APIRouter, HTTPException
 
 from auth import AuthHeader, require_user, require_writer
+from batch_state import state_from_status
 from db import connect, now_iso, write_audit
 from locks import release, require_lock
 from models import BatchIn
@@ -49,6 +50,7 @@ def list_batches(authorization: AuthHeader = None, status: str | None = None):
         for r in rows:
             d = dict(r)
             d["temp_points"] = json.loads(d["temp_points"] or "[]")
+            d.update(state_from_status(d.get("status")))
             items.append(d)
         return {"items": items}
 
@@ -68,6 +70,7 @@ def get_batch(batch_id: int, authorization: AuthHeader = None):
             raise HTTPException(404, "批次不存在")
         data = dict(row)
         data["temp_points"] = json.loads(data["temp_points"] or "[]")
+        data.update(state_from_status(data.get("status")))
         exc = conn.execute(
             "SELECT * FROM excursion_cursors WHERE batch_id=? ORDER BY id DESC",
             (batch_id,),

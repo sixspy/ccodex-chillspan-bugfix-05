@@ -4,6 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from auth import AuthHeader, require_user, require_writer
+from batch_state import active_count, sealed_count
 from db import connect, now_iso, write_audit
 from models import ChamberIn
 
@@ -44,16 +45,13 @@ def get_chamber(chamber_id: int, authorization: AuthHeader = None):
                WHERE chamber_id=? ORDER BY id DESC LIMIT 20""",
             (chamber_id,),
         ).fetchall()
-        active = conn.execute(
-            """SELECT COUNT(*) c FROM temp_batches
-               WHERE chamber_id=? AND status NOT IN ('已封批','作废')""",
-            (chamber_id,),
-        ).fetchone()["c"]
+        active = active_count(conn, chamber_id)
         return {
             "chamber": dict(ch),
             "probes": [dict(p) for p in probes],
             "recent_batches": [dict(b) for b in batches],
             "active_batch_count": active,
+            "sealed_batch_count": sealed_count(conn, chamber_id),
             "quota_left": int(ch["quota_batches"]) - int(active),
         }
 
